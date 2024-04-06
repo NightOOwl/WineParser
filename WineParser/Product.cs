@@ -1,4 +1,7 @@
-﻿namespace WineParser
+﻿
+using Newtonsoft.Json;
+
+namespace WineParser
 {
     public class Product
     {
@@ -25,5 +28,11 @@
         public string Region { get; set; }
         public string Url { get; set; }
         public List<string> PictureUrls { get; set; }
+
+        public string ToJson()
+        {         
+            string json = JsonConvert.SerializeObject(this, Formatting.Indented);
+            return json;
+        }
     }
 }

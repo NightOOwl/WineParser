@@ -3,7 +3,7 @@ using AngleSharp.Dom;
 
 namespace WineParser
 {
-    public class HtmlLoader
+    public class HtmlLoader : IDisposable
     {
         private readonly Dictionary<string,string> queryParameters;
         private readonly HttpClient client;
@@ -20,11 +20,14 @@ namespace WineParser
             this.queryParameters = queryParameters;
         }
 
+        public void Dispose()
+        {
+            client.Dispose();
+        }
 
         public async Task<IDocument> LoadHtml(string url)
         {
-            //var queryString = string.Join("&", queryParameters.Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value)}"));
-            url = $"{url}?{queryParameters.Select(x=>x.Key)}={queryParameters.Select(x=>x.Value)}";
+            //url = url + "?setVisitorCityId=3";
 
             var response = await client.GetAsync(url);
 
@@ -34,6 +37,7 @@ namespace WineParser
             response.EnsureSuccessStatusCode();
 
             var html = await response.Content.ReadAsStringAsync();
+            
             var document = await context.OpenAsync(req => req.Content(html));
 
             return document;

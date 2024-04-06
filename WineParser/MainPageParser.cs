@@ -23,10 +23,15 @@ namespace WineParser
             string url = domainAdress + "/" + relativeAdress + "/" + postfix;
             var links = new ConcurrentBag<string>();
 
-            int pagination = await GetPaginationAsync(url);
+            int pageCount = await GetPageCountAsync(url);
 
+            var pages = Enumerable.Range(1, pageCount);
 
-            for (int page = 1; page <= pagination; page++)
+            var options = new ParallelOptions() { MaxDegreeOfParallelism = 3 };
+
+            var processedPageCount = 0;
+
+            await Parallel.ForEachAsync(pages, options, async (page, cancellationToken) =>
             {
                 postfix = $"page{page}/";
                 string currentUrl = domainAdress + "/" + relativeAdress + "/" + postfix;
@@ -40,16 +45,18 @@ namespace WineParser
                     Console.WriteLine(link);
                 }
 
-                Console.WriteLine($"Страниц каталога обработано {page}/{pagination}");
-            }
+                Interlocked.Increment(ref processedPageCount);   
+                Console.WriteLine($"Страниц каталога обработано {processedPageCount}/{pageCount}");
+            });
 
             return links;
         }
 
-        private async Task<int> GetPaginationAsync(string url)
+        private async Task<int> GetPageCountAsync(string url)
         {
-            var document = await htmlLoader.LoadHtml(url);
-
+            
+            var document = await htmlLoader.LoadHtml(url);        
+         
             var navigationBar = document.QuerySelector("div.pagination");
 
             var pagination = navigationBar.QuerySelector(".pagination__next")

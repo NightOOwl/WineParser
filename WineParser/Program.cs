@@ -1,4 +1,6 @@
 ﻿
+using System.Collections.Concurrent;
+
 namespace WineParser
 {
     internal class Program
@@ -13,26 +15,51 @@ namespace WineParser
 
             var Parameters = new Dictionary<string, string>
             {
-                { "setVisitorCityId", "2" }
+                { "setVisitorCityId", "6" }
             };
             var domainAdress = "https://simplewine.ru";
             var relativeAdress = "catalog/shampanskoe_i_igristoe_vino";
 
 
-            var htmlLoader = new HtmlLoader(Headers, Parameters);
+            using var htmlLoader = new HtmlLoader(Headers, Parameters);
 
-            var mainPageParser = new MainPageParser(htmlLoader,domainAdress,relativeAdress);
+
+            // Инициализация файла со ссылками на товары
+
+            var mainPageParser = new MainPageParser(htmlLoader, domainAdress, relativeAdress);
 
             var productLinks = await mainPageParser.ParseProductsLinksAsync();
-            List<Product> products = new List<Product>();
+
+            var fileWriter = new FileWriter();
+            await fileWriter.WriteToFileAsync("links.txt", productLinks);
+
+
+            var products = new ConcurrentBag<string>();
 
             var productParser = new ProductParser();
-            foreach (var link in productLinks)
+
+            var options = new ParallelOptions() { MaxDegreeOfParallelism = 3 };
+
+            var processedProductCount = 0;
+
+            await Parallel.ForEachAsync(productLinks, options, async (url, cancellationToken) =>
             {
-               var html = await htmlLoader.LoadHtml(link);
-               var product = await productParser.ParseProductAsync(html, link);
-               products.Add(product);
-            }
+                try
+                {
+                    var html = await htmlLoader.LoadHtml(url);
+                    var product = await productParser.ParseProductAsync(html, url);
+                    products.Add(product.ToJson());
+                }
+                catch (Exception ex)
+                {
+                    await Console.Out.WriteLineAsync($"Не удалось собрать необходимую информацию по товару: {url}");
+                    return;
+                }
+                Interlocked.Increment(ref processedProductCount);
+                await Console.Out.WriteLineAsync($"Прогресс: {processedProductCount}/{productLinks.Count}");
+            });
+            
+            await fileWriter.WriteToFileAsync("products.json", products);
         }
     }
 }

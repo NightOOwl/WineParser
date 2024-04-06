@@ -1,5 +1,6 @@
 ﻿using AngleSharp.Dom;
 using System.Text.RegularExpressions;
+using WineParser.Exstantions;
 
 namespace WineParser
 {
@@ -8,8 +9,8 @@ namespace WineParser
         public async Task<Product> ParseProductAsync(IDocument document, string productUrl)
         {
             // Получаем название товара
-            string name = document.QuerySelector("h1").TextContent.Trim();
-            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            string name = document.QuerySelectorSafe("h1").TextContent.Trim();
+            
 
             // Получаем актуальную стоимость товара
             var priceString = document.QuerySelector("div.product-buy__price").TextContent.Replace(" ", "").Replace(".", ",");
@@ -22,21 +23,21 @@ namespace WineParser
                 : (float?)null;
 
             // Получаем рейтинг товара
-            var rating = float.Parse(document.QuerySelector("p.rating-stars__value").TextContent.Replace(".", ",").Trim());
+            var rating = float.Parse(document.QuerySelectorSafe("p.rating-stars__value").TextContent.Replace(".", ",").Trim());
 
             // Получаем объем товара
             var volumeRegexPattern = new Regex(".*Объем:.*");
             var volume = document.QuerySelectorAll("dt")
                 .First(dt => volumeRegexPattern.IsMatch(dt.TextContent)).NextElementSibling.TextContent.Trim();
-            ArgumentException.ThrowIfNullOrWhiteSpace(volume);
+            
 
             // Получаем артикул товара
-            var articulString = document.QuerySelector("span.product-page__article.js-copy-article").TextContent;
+            var articulString = document.QuerySelectorSafe("span.product-page__article.js-copy-article").TextContent;
             var articul = int.Parse(Regex.Match(articulString, @"\d+").Value);
 
             // Получаем регион товара 
             var region = document.QuerySelector("button.location__current.dropdown__toggler").TextContent.Trim();
-            ArgumentException.ThrowIfNullOrWhiteSpace(region);
+            
 
             // Получаем ссылки на картинки 
             var pictures = document.QuerySelectorAll("div.product-slider__item.swiper-slide")
@@ -44,7 +45,8 @@ namespace WineParser
                 .ToList();
             
 
-            var product = new Product(name, price, oldPrice, rating, volume, articul, region, productUrl, pictures);           
+            var product = new Product(name, price, oldPrice, rating, volume, articul, region, productUrl, pictures);
+            await Console.Out.WriteLineAsync($"Продукт {name} обработан.");
             return product;
         }
     }
