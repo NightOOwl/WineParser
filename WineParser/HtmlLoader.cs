@@ -5,19 +5,16 @@ namespace WineParser
 {
     public class HtmlLoader : IDisposable
     {
-        private readonly Dictionary<string,string> queryParameters;
         private readonly HttpClient client;
 
-        public HtmlLoader(Dictionary<string, string> headers, Dictionary<string, string> queryParameters)
+        public HtmlLoader(Dictionary<string, string> headers)
         {
             client = new HttpClient();
 
             foreach (var header in headers)
             {
                 client.DefaultRequestHeaders.Add(header.Key, header.Value);
-            }
-
-            this.queryParameters = queryParameters;
+            }           
         }
 
         public void Dispose()
@@ -26,9 +23,7 @@ namespace WineParser
         }
 
         public async Task<IDocument> LoadHtml(string url)
-        {
-            //url = url + "?setVisitorCityId=3";
-
+        {          
             var response = await client.GetAsync(url);
 
             var config = Configuration.Default.WithDefaultLoader();

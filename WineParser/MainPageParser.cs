@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using WineParser.Exstantions;
 
 namespace WineParser
 {
@@ -8,13 +9,15 @@ namespace WineParser
         private string domainAdress;
         private string relativeAdress;
         private string postfix;
+        private int city;
 
-
-        public MainPageParser(HtmlLoader htmlLoader, string domainAdress, string relativeAdress, string postfix = "")
+        public MainPageParser(HtmlLoader htmlLoader, string domainAdress, string relativeAdress, int city, string postfix = "")
         {
             this.htmlLoader = htmlLoader;
             this.domainAdress = domainAdress;
             this.relativeAdress = relativeAdress;
+            this.postfix = postfix;
+            this.city = city;
         }
 
 
@@ -23,7 +26,8 @@ namespace WineParser
             string url = domainAdress + "/" + relativeAdress + "/" + postfix;
             var links = new ConcurrentBag<string>();
 
-            int pageCount = await GetPageCountAsync(url);
+            string urlWithCityParameter = url + $"?setVisitorCityId={city}";
+            int pageCount = await GetPageCountAsync(urlWithCityParameter);
 
             var pages = Enumerable.Range(1, pageCount);
 
@@ -53,11 +57,10 @@ namespace WineParser
         }
 
         private async Task<int> GetPageCountAsync(string url)
-        {
-            
+        {   
             var document = await htmlLoader.LoadHtml(url);        
          
-            var navigationBar = document.QuerySelector("div.pagination");
+            var navigationBar = document.QuerySelectorSafe("div.pagination");
 
             var pagination = navigationBar.QuerySelector(".pagination__next")
                 .PreviousElementSibling
