@@ -26,7 +26,11 @@ namespace WineParser
             string url = domainAdress + "/" + relativeAdress + "/" + postfix;
             var links = new ConcurrentBag<string>();
 
-            string urlWithCityParameter = url + $"?setVisitorCityId={city}";
+
+            // При попытке передать параметр, определяющий город, парсер работает очень нестабильно 
+            //(сервер часто, но не всегда отдает "битый" html)
+            string urlWithCityParameter = url; //+ $"?setVisitorCityId={city}";
+
             int pageCount = await GetPageCountAsync(urlWithCityParameter);
 
             var pages = Enumerable.Range(1, pageCount);

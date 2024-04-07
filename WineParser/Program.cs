@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Polly;
 using System.Collections.Concurrent;
 
 namespace WineParser
@@ -9,16 +10,24 @@ namespace WineParser
         {
             var Headers = new Dictionary<string, string>
             {
-                { "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" },
+                { "User-Agent", "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" },
                 { "Referer", "https://simplewine.ru/" }
             };
             var domainAdress = "https://simplewine.ru";
             var relativeAdress = "catalog/shampanskoe_i_igristoe_vino";
 
+            var retryPolicy = Policy.Handle<Exception>()
+                               .WaitAndRetryAsync(5,
+                                   retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                                   (exception, timeSpan, retryCount, context) =>
+                                   {                                      
+                                       Console.WriteLine($"Ошибка при выполнении запроса. Попытка {retryCount}...");
+                                   });
+
             using var htmlLoader = new HtmlLoader(Headers);
 
-            var mainPageParser = new MainPageParser(htmlLoader, domainAdress, relativeAdress, 2);
-            var productLinks = await mainPageParser.ParseProductsLinksAsync();
+            var mainPageParser = new MainPageParser(htmlLoader, domainAdress, relativeAdress, 5);
+            var productLinks = await retryPolicy.ExecuteAsync(mainPageParser.ParseProductsLinksAsync);
             var products = new ConcurrentBag<Product>();
             var productParser = new ProductParser();
             var options = new ParallelOptions() { MaxDegreeOfParallelism = 3 };
@@ -28,8 +37,8 @@ namespace WineParser
             {
                 try
                 {
-                    var html = await htmlLoader.LoadHtml(url);
-                    var product = await productParser.ParseProductAsync(html, url);
+                    var html = await retryPolicy.ExecuteAsync(async () => await htmlLoader.LoadHtml(url));
+                    var product = await retryPolicy.ExecuteAsync(async () => await productParser.ParseProductAsync(html, url));
                     products.Add(product);
                 }
                 catch (Exception ex)
@@ -44,7 +53,7 @@ namespace WineParser
             var productsJson = JsonConvert.SerializeObject(products, Formatting.Indented);
 
             var fileWriter = new FileWriter();
-            await fileWriter.WriteToFileAsync("productsSPb.json", productsJson);
+            await fileWriter.WriteToFileAsync("products.json", productsJson);
         }
        
     }

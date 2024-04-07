@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.1.2" />
-    <PackageReference Include="Dodo.HttpClient.ResiliencePolicies" Version="2.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
   </ItemGroup>
